@@ -1,0 +1,20 @@
+corrosion - light thread library
+================================
+
+Corossion is coroutine library based on **awesome**
+[David Beazley](http://www.dabeaz.com/coroutines/) presentation code with
+[epoll](http://linux.die.net/man/4/epoll) support (actually *only* with epoll
+support, but who cares?).
+
+
+Why?
+====
+
+I like to know how *things* works. And it was fun to write yet another
+asynchronous library.
+
+
+No unittests, are you kidding me?!
+==================================
+
+Not yet. Actually, it's just a toy, not a real framework.
