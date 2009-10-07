@@ -1,0 +1,3 @@
+include corrosion/*.py
+recursive-include corrosion/core *.py
+recursive-include corrosion/net *.py
