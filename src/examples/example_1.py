@@ -39,7 +39,10 @@ def main():
     scheduler = Scheduler()
     scheduler.add(echo(options.host, options.port))
     print('server running >> %s:%d' % (options.host or '0.0.0.0', options.port))
-    scheduler.run()
+    try:
+        scheduler.run()
+    except KeyboardInterrupt:
+        scheduler.stop()
 
 if __name__ == '__main__':
     main()

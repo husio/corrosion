@@ -2,18 +2,22 @@
 
 import types
 
-import calls
+import corrosion.core import calls
+from corrosion.tools.log import get_logger
 
+_log = get_logger('task')
 
 
 class Task(object):
+    _id = 0
     id = None
     target = None
     to_send = None
     wait_till = None
 
     def __init__(self, target):
-        self.id = id(self)
+        Task._id += 1
+        self.id = Task._id
         self.target = target
         self.to_send = None
         self._callstack = []
