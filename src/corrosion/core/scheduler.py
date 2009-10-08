@@ -15,7 +15,8 @@ class Scheduler(object):
         self._epoll = select.epoll()
         self._tasks = {}
         self._ready_queue = Queue()
-        self._waiting_io = {}
+        self._waiting_read = {}
+        self._waiting_write = {}
         self._waiting_end = {}
 
     def add(self, callback):
@@ -27,10 +28,15 @@ class Scheduler(object):
     def _schedule_task(self, task):
         self._ready_queue.put(task)
 
-    def _schedule_task_wait_io(self, task, fd):
-        assert fd not in self._waiting_io
-        self._waiting_io[fd] = task
-        self._epoll.register(fd, select.EPOLLIN | select.EPOLLOUT)
+    def _schedule_task_wait_read(self, task, fd):
+        assert fd not in self._waiting_read
+        self._waiting_read[fd] = task
+        self._epoll.register(fd, select.EPOLLIN)
+
+    def _schedule_task_wait_write(self, task, fd):
+        assert fd not in self._waiting_write
+        self._waiting_write[fd] = task
+        self._epoll.register(fd, select.EPOLLOUT)
 
     def _schedule_task_wait_end(self, task, wait_id):
         if wait_id in self._tasks:
@@ -46,13 +52,25 @@ class Scheduler(object):
 
     def _io_pool(self, timeout=0.1):
         for fd, event in self._epoll.poll(timeout):
-            if event in [select.EPOLLPRI, select.EPOLLOUT, select.EPOLLIN]:
-                task = self._waiting_io.pop(fd)
+            if event == select.EPOLLIN:
+                task = self._waiting_read.pop(fd)
                 self._schedule_task(task)
-                self._epoll.unregister(fd)
+            elif event == select.EPOLLOUT:
+                task = self._waiting_write.pop(fd)
+                self._schedule_task(task)
+            elif event == select.EPOLLOUT|select.EPOLLIN:
+                print 'Connection lost'
+                import ipdb; ipdb.set_trace()
+            elif event == select.EPOLLERR:
+                print 'EPOLLERR: Error condition happened on the assoc. fd'
+            elif event == select.EPOLLHUP:
+                print 'EPOLLHUP: Hang up happened on the assoc. fd'
             else:
+                print 'Unknown event:', event
                 # TODO
-                raise NotImplemented
+                raise Exception
+            self._epoll.unregister(fd)
+
 
     def run(self):
         if getattr(self, '__keep_running', False):

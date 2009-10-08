@@ -62,10 +62,19 @@ class WaitEnd(Wait):
             self.scheduler._schedule_task(self.task)
 
 
-class WaitIO(Wait):
+class WaitRead(Wait):
     def __init__(self, file_like):
         self.file_like = file_like
 
     def handle(self):
         fd = self.file_like.fileno()
-        self.scheduler._schedule_task_wait_io(self.task, fd)
+        self.scheduler._schedule_task_wait_read(self.task, fd)
+
+
+class WaitWrite(Wait):
+    def __init__(self, file_like):
+        self.file_like = file_like
+
+    def handle(self):
+        fd = self.file_like.fileno()
+        self.scheduler._schedule_task_wait_write(self.task, fd)

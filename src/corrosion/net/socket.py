@@ -8,18 +8,18 @@ class Socket(object):
         self.socket = socket
 
     def accept(self):
-        yield calls.WaitIO(self.socket)
+        yield calls.WaitRead(self.socket)
         (client, address) = self.socket.accept()
         yield (Socket(client), address)
 
     def send(self, buff):
         while buff:
-            yield calls.WaitIO(self.socket)
+            yield calls.WaitWrite(self.socket)
             out_len = self.socket.send(buff)
             buff = buff[out_len:]
 
     def recv(self, max_bytes):
-        yield calls.WaitIO(self.socket)
+        yield calls.WaitRead(self.socket)
         yield self.socket.recv(max_bytes)
 
     def close(self):
