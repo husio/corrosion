@@ -21,9 +21,9 @@ def handle_request(client, address):
 
 def echo(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock = Socket(s)
     s.bind((host, port))
     s.listen(10)
-    sock = Socket(s)
     while True:
         client, address = yield sock.accept()
         yield handle_request(client, address)

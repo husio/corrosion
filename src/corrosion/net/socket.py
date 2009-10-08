@@ -6,6 +6,7 @@ from corrosion.core import calls
 class Socket(object):
     def __init__(self, socket):
         self.socket = socket
+        self.socket.setblocking(0)
 
     def accept(self):
         yield calls.WaitRead(self.socket)
