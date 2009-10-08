@@ -2,7 +2,7 @@
 
 import types
 
-import corrosion.core import calls
+from corrosion.core import calls
 from corrosion.tools.log import get_logger
 
 _log = get_logger('task')
