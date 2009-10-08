@@ -4,26 +4,25 @@ import socket
 import optparse
 
 from corrosion.core.scheduler import Scheduler
-from corrosion.net.socket import Socket
+from corrosion.net.sock import Socket
 
 
 def handle_request(client, address):
-    total_data = []
+    data = ''
     while True:
-        data = yield client.recv(1024)
-        total_data.append(data)
+        data += yield client.recv(1024)
         # using telnet for tests
-        if data == '\r\n':
+        if '\r\n' in data:
             break
-    response = 'echo: ' + ''.join(total_data)
+    response = 'echo: ' + data
     yield client.send(response)
     yield client.close()
 
 def echo(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock = Socket(s)
-    s.bind((host, port))
-    s.listen(10)
+    sock.bind((host, port))
+    sock.listen(1)
     while True:
         client, address = yield sock.accept()
         yield handle_request(client, address)
