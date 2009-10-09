@@ -10,7 +10,9 @@ from corrosion.net.sock import Socket
 def handle_request(sock, addr):
     data = ''
     while True:
+        print 'data handler loop..'
         data += yield sock.recv(1024)
+        print 'incomming data yielded..'
         # using telnet for tests
         if '\r\n' in data:
             break
@@ -18,9 +20,8 @@ def handle_request(sock, addr):
     yield sock.send(response)
     yield sock.close()
 
-def echo(host, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock = Socket(s)
+def echo(raw_sock, host, port):
+    sock = Socket(raw_sock)
     sock.bind((host, port))
     sock.listen(1)
     while True:
@@ -37,12 +38,15 @@ def main():
             help='server host')
     (options, args) = parser.parse_args()
     scheduler = Scheduler()
-    scheduler.add(echo(options.host, options.port))
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    scheduler.add(echo(sock, options.host, options.port))
     print('server running >> %s:%d' % (options.host or '0.0.0.0', options.port))
     try:
         scheduler.run()
     except KeyboardInterrupt:
         scheduler.stop()
+    finally:
+        sock.close()
 
 if __name__ == '__main__':
     main()

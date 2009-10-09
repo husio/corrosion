@@ -51,8 +51,8 @@ class Scheduler(object):
         for task in waiting_tasks:
             self._schedule_task(task)
 
-    def _io_poll(self, timeout=1):
-        for fd, event in self._epoll.poll(timeout):
+    def _io_poll(self, timeout=1, maxevents=-1):
+        for fd, event in self._epoll.poll(timeout, maxevents):
             if event & select.EPOLLIN:
                 _log.debug('EPOLLIN')
                 task = self._waiting_read.pop(fd)
@@ -86,6 +86,7 @@ class Scheduler(object):
 
     def _run(self):
         while self.__keep_running:
+            _log.debug('tick')
             while self._ready_queue.empty():
                 self._io_poll()
             task = self._ready_queue.get()
