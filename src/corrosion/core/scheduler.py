@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import time
 import select
 from Queue import Queue
 
@@ -21,8 +20,8 @@ class Scheduler(object):
         self._waiting_write = {}
         self._waiting_end = {}
 
-    def add(self, callback):
-        task = Task(callback)
+    def add(self, coro):
+        task = Task(coro)
         self._tasks[task.id] = task
         self._schedule_task(task)
         return task.id
@@ -62,10 +61,6 @@ class Scheduler(object):
                 _log.debug('EPOLLOUT')
                 task = self._waiting_write.pop(fd)
                 self._schedule_task(task)
-            elif event & select.EPOLLOUT|select.EPOLLIN:
-                _log.debug('EPOLLOUT | EPOLLIN')
-                print 'Connection lost'
-                import ipdb; ipdb.set_trace()
             elif event & select.EPOLLERR:
                 _log.debug('EPOLLERR')
                 print 'EPOLLERR: Error condition happened on the assoc. fd'
@@ -95,9 +90,6 @@ class Scheduler(object):
                 self._io_poll()
             task = self._ready_queue.get()
             _log.debug('got new task - run %d', task.id)
-            if task.wait_till and task.wait_till > time.time():
-                self._schedule_task(task)
-                continue
             try:
                 result = task.run()
                 if isinstance(result, SystemCall):

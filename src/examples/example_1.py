@@ -7,16 +7,16 @@ from corrosion.core.scheduler import Scheduler
 from corrosion.net.sock import Socket
 
 
-def handle_request(client, address):
+def handle_request(sock, addr):
     data = ''
     while True:
-        data += yield client.recv(1024)
+        data += yield sock.recv(1024)
         # using telnet for tests
         if '\r\n' in data:
             break
     response = 'echo: ' + data
-    yield client.send(response)
-    yield client.close()
+    yield sock.send(response)
+    yield sock.close()
 
 def echo(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -24,8 +24,8 @@ def echo(host, port):
     sock.bind((host, port))
     sock.listen(1)
     while True:
-        client, address = yield sock.accept()
-        yield handle_request(client, address)
+        conn, addr = yield sock.accept()
+        yield handle_request(conn, addr)
 
 
 

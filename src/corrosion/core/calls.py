@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import time
-import datetime
+from corrosion.tools.log import get_logger
+
+_log = get_logger('calls')
 
 
 class SystemCall(object):
@@ -35,21 +36,6 @@ class Wait(SystemCall):
     pass
 
 
-class WaitTime(Wait):
-    def __init__(self, t):
-        if isinstance(t, datetime.datetime):
-            t = time.mktime(t.timetuple())
-        if isinstance(t, datetime.timedelta):
-            dt = datetime.datetime.now() + t
-            t = time.mktime(dt.timetuple())
-        self.wait_till = t
-
-    def handle(self):
-        self.task.wait_till = self.wait_till
-        self.to_send = self.task.wait_till
-        self.scheduler._schedule_task(self.task)
-
-
 class WaitEnd(Wait):
     def __init__(self, task_id):
         super(WaitEnd, self).__init__()
@@ -67,6 +53,8 @@ class WaitRead(Wait):
         self.file_like = file_like
 
     def handle(self):
+        _log.debug('%6s: %s %s',
+                type(self).__name__, self.task, self.task.target)
         fd = self.file_like.fileno()
         self.scheduler._schedule_task_wait_read(self.task, fd)
 

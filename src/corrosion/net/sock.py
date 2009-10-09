@@ -13,8 +13,10 @@ class Socket(object):
 
     def accept(self):
         yield calls.WaitRead(self.sock)
-        (client, address) = self.sock.accept()
-        yield (Socket(client), address)
+        print 'socket ready do acccept'
+        conn, addr = self.sock.accept()
+        print 'accepted, waiting for data & blocking other dudes..'
+        yield (Socket(conn), addr)
 
     def send(self, buff):
         while buff:

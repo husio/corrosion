@@ -7,6 +7,11 @@ import logging
 LOG_DIR = '/tmp'
 
 def get_logger(name):
-    file_path = os.path.join(LOG_DIR, name + '.log')
-    logging.basicConfig(filename=file_path, level=logging.DEBUG,)
-    return logging
+    logger_path = os.path.join(LOG_DIR, name + '.log')
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(asctime)s - %(message)s")
+    handler = logging.FileHandler(logger_path)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger

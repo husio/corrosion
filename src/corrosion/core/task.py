@@ -9,15 +9,12 @@ _log = get_logger('task')
 
 
 class Task(object):
-    _id = 0
-    id = None
-    target = None
+    __id = 0
     to_send = None
-    wait_till = None
 
     def __init__(self, target):
-        Task._id += 1
-        self.id = Task._id
+        Task._Task__id += 1
+        self.id = Task._Task__id
         self.target = target
         self.to_send = None
         self._callstack = []
