@@ -9,6 +9,7 @@ from corrosion.net.sock import Socket
 
 def handle_request(sock, addr):
     data = ''
+    print 'type sock:', type(sock)
     while True:
         print 'data handler loop..'
         data += yield sock.recv(1024)

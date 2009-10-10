@@ -2,7 +2,10 @@
 
 import socket
 
+from corrosion.tools import log
 from corrosion.core import calls
+
+_log = log.get_logger('sock')
 
 
 class Socket(object):
@@ -25,17 +28,16 @@ class Socket(object):
             buff = buff[out_len:]
 
     def recv(self, max_bytes):
+        _log.debug('waiting for socket to read')
         yield calls.WaitRead(self.sock)
+        _log.debug('reading from socket')
         yield self.sock.recv(max_bytes)
 
     def close(self):
         yield self.sock.close()
 
-    def bind(self, addr):
-        self.sock.bind(addr)
-
-    def listen(self, n=None):
-        self.sock.listen(n)
+    def __getattr__(self, name):
+        return getattr(self.sock, name)
 
     def __del__(self):
         self.close()

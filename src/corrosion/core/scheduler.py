@@ -32,12 +32,12 @@ class Scheduler(object):
     def _schedule_task_wait_read(self, task, fd):
         assert fd not in self._waiting_read
         self._waiting_read[fd] = task
-        self._epoll.register(fd, select.EPOLLIN | select.EPOLLET)
+        self._epoll.register(fd, select.EPOLLIN)
 
     def _schedule_task_wait_write(self, task, fd):
         assert fd not in self._waiting_write
         self._waiting_write[fd] = task
-        self._epoll.register(fd, select.EPOLLOUT | select.EPOLLET)
+        self._epoll.register(fd, select.EPOLLOUT)
 
     def _schedule_task_wait_end(self, task, wait_id):
         if wait_id in self._tasks:
@@ -45,14 +45,17 @@ class Scheduler(object):
             return True
         return False
 
-    def _remove_task(self, task):
-        del self._tasks[task.id]
-        waiting_tasks = self._waiting_end.pop(task.id, [])
+    def _remove_task(self, task_id):
+        del self._tasks[task_id]
+        waiting_tasks = self._waiting_end.pop(task_id, [])
         for task in waiting_tasks:
             self._schedule_task(task)
 
     def _io_poll(self, timeout=1, maxevents=-1):
-        for fd, event in self._epoll.poll(timeout, maxevents):
+        events = self._epoll.poll(timeout, maxevents)
+        for fd, event in events:
+            _log.debug('-' * 20)
+            _log.debug('epoll tick:   fd: %d   event: %d', fd, event)
             if event & select.EPOLLIN:
                 _log.debug('EPOLLIN')
                 task = self._waiting_read.pop(fd)
@@ -64,9 +67,13 @@ class Scheduler(object):
             elif event & select.EPOLLERR:
                 _log.debug('EPOLLERR')
                 print 'EPOLLERR: Error condition happened on the assoc. fd'
+                self._epoll.unregister(fd)
+                self._remove_task[fd]
             elif event & select.EPOLLHUP:
                 _log.debug('EPOLLHUP')
                 print 'EPOLLHUP: Hang up happened on the assoc. fd'
+                self._epoll.unregister(fd)
+                self._remove_task[fd]
             else:
                 _log.error('unknown event: %d', event)
                 print 'Unknown event:', event
@@ -74,6 +81,13 @@ class Scheduler(object):
                 raise Exception
             self._epoll.unregister(fd)
 
+    def _io_poll_task(self):
+        while True:
+            if self._ready_queue.empty():
+                self._io_poll()
+            else:
+                self._io_poll(0)
+            yield
 
     def run(self):
         if getattr(self, '__keep_running', False):
@@ -85,10 +99,9 @@ class Scheduler(object):
             self.stop()
 
     def _run(self):
-        while self.__keep_running:
-            _log.debug('tick')
-            while self._ready_queue.empty():
-                self._io_poll()
+        self.add(self._io_poll_task())
+        while self.__keep_running and self._tasks:
+            _log.debug('tick: %s', self._ready_queue.empty())
             task = self._ready_queue.get()
             _log.debug('got new task - run %d', task.id)
             try:
@@ -101,7 +114,7 @@ class Scheduler(object):
                 else:
                     self._schedule_task(task)
             except StopIteration:
-                self._remove_task(task)
+                self._remove_task(task.id)
                 if self._ready_queue.empty():
                     self.stop()
 
