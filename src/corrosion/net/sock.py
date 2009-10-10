@@ -16,9 +16,7 @@ class Socket(object):
 
     def accept(self):
         yield calls.WaitRead(self.sock)
-        print 'socket ready do acccept'
         conn, addr = self.sock.accept()
-        print 'accepted, waiting for data & blocking other dudes..'
         yield (Socket(conn), addr)
 
     def send(self, buff):
@@ -33,11 +31,5 @@ class Socket(object):
         _log.debug('reading from socket')
         yield self.sock.recv(max_bytes)
 
-    def close(self):
-        yield self.sock.close()
-
     def __getattr__(self, name):
         return getattr(self.sock, name)
-
-    def __del__(self):
-        self.close()

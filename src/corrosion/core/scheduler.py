@@ -10,6 +10,8 @@ from corrosion.core.calls import SystemCall
 
 _log = get_logger('scheduler')
 
+
+
 class Scheduler(object):
 
     def __init__(self):
@@ -66,17 +68,16 @@ class Scheduler(object):
                 self._schedule_task(task)
             elif event & select.EPOLLERR:
                 _log.debug('EPOLLERR')
-                print 'EPOLLERR: Error condition happened on the assoc. fd'
+                _log.warning('EPOLLERR: Error condition happened on the assoc fd')
                 self._epoll.unregister(fd)
                 self._remove_task[fd]
             elif event & select.EPOLLHUP:
                 _log.debug('EPOLLHUP')
-                print 'EPOLLHUP: Hang up happened on the assoc. fd'
+                _log.warning('EPOLLHUP: Hang up happened on the assoc fd')
                 self._epoll.unregister(fd)
                 self._remove_task[fd]
             else:
                 _log.error('unknown event: %d', event)
-                print 'Unknown event:', event
                 # TODO
                 raise Exception
             self._epoll.unregister(fd)
@@ -84,7 +85,7 @@ class Scheduler(object):
     def _io_poll_task(self):
         while True:
             if self._ready_queue.empty():
-                self._io_poll()
+                self._io_poll(1)
             else:
                 self._io_poll(0)
             yield
@@ -99,9 +100,9 @@ class Scheduler(object):
             self.stop()
 
     def _run(self):
+        # ready sockets schedulation running as task
         self.add(self._io_poll_task())
-        while self.__keep_running and self._tasks:
-            _log.debug('tick: %s', self._ready_queue.empty())
+        while self.__keep_running:
             task = self._ready_queue.get()
             _log.debug('got new task - run %d', task.id)
             try:

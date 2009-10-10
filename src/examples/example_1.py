@@ -4,16 +4,14 @@ import socket
 import optparse
 
 from corrosion.core.scheduler import Scheduler
+from corrosion.core import calls
 from corrosion.net.sock import Socket
 
 
 def handle_request(sock, addr):
     data = ''
-    print 'type sock:', type(sock)
     while True:
-        print 'data handler loop..'
         data += yield sock.recv(1024)
-        print 'incomming data yielded..'
         # using telnet for tests
         if '\r\n' in data:
             break
@@ -24,10 +22,12 @@ def handle_request(sock, addr):
 def echo(raw_sock, host, port):
     sock = Socket(raw_sock)
     sock.bind((host, port))
-    sock.listen(1)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.listen(2)
     while True:
+        print '>> waiting for new connection'
         conn, addr = yield sock.accept()
-        yield handle_request(conn, addr)
+        yield calls.SubCall(handle_request(conn, addr))
 
 
 
@@ -41,7 +41,7 @@ def main():
     scheduler = Scheduler()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     scheduler.add(echo(sock, options.host, options.port))
-    print('server running >> %s:%d' % (options.host or '0.0.0.0', options.port))
+    print('>> server running  %s:%d' % (options.host or '0.0.0.0', options.port))
     try:
         scheduler.run()
     except KeyboardInterrupt:
