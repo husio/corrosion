@@ -7,6 +7,7 @@ from Queue import Queue
 from corrosion.tools.log import get_logger
 from corrosion.core.task import Task
 from corrosion.core.calls import SystemCall
+#from corrosion.tools.debug import Queue
 
 _log = get_logger('scheduler')
 
@@ -56,30 +57,24 @@ class Scheduler(object):
     def _io_poll(self, timeout=1, maxevents=-1):
         events = self._epoll.poll(timeout, maxevents)
         for fd, event in events:
-            _log.debug('-' * 20)
-            _log.debug('epoll tick:   fd: %d   event: %d', fd, event)
             if event & select.EPOLLIN:
-                _log.debug('EPOLLIN')
                 task = self._waiting_read.pop(fd)
                 self._schedule_task(task)
             elif event & select.EPOLLOUT:
-                _log.debug('EPOLLOUT')
                 task = self._waiting_write.pop(fd)
                 self._schedule_task(task)
             elif event & select.EPOLLERR:
-                _log.debug('EPOLLERR')
-                _log.warning('EPOLLERR: Error condition happened on the assoc fd')
-                self._epoll.unregister(fd)
+                _log.error('EPOLLERR: Error condition happened on %d', fd)
+                _log.error('EPOLLERR: %s', self._tasks[fd])
                 self._remove_task[fd]
             elif event & select.EPOLLHUP:
-                _log.debug('EPOLLHUP')
-                _log.warning('EPOLLHUP: Hang up happened on the assoc fd')
-                self._epoll.unregister(fd)
+                _log.error('EPOLLHUP: Hang up happened on the assoc fd')
+                _log.error('EPOLLERR: %s', self._tasks[fd])
                 self._remove_task[fd]
             else:
                 _log.error('unknown event: %d', event)
-                # TODO
-                raise Exception
+                _log.error('unknown event: %s', self._tasks[fd])
+                raise RuntimeError('unknown epoll event')
             self._epoll.unregister(fd)
 
     def _io_poll_task(self):
@@ -104,14 +99,23 @@ class Scheduler(object):
         self.add(self._io_poll_task())
         while self.__keep_running:
             task = self._ready_queue.get()
-            _log.debug('got new task - run %d', task.id)
             try:
                 result = task.run()
                 if isinstance(result, SystemCall):
                     syscall = result
                     syscall.task = task
                     syscall.scheduler = self
-                    syscall.handle()
+                    try:
+                        syscall.handle()
+                    except Exception as e:
+                        # catch any other exception, and raise it in current task
+                        _log.info('exception raised: %s', type(e).__name__)
+                        #if task.to_send is e:
+                        #    # infinite exception loop protection
+                        #    raise
+                        task.to_send = e
+                        # schedule task, so it could handle exception 
+                        self._schedule_task(task)
                 else:
                     self._schedule_task(task)
             except StopIteration:

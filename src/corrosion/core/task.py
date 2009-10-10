@@ -3,14 +3,13 @@
 import types
 
 from corrosion.core import calls
-from corrosion.tools.log import get_logger
 
-_log = get_logger('task')
 
 
 class Task(object):
     __id = 0
     to_send = None
+    parent = None
 
     def __init__(self, target):
         Task._Task__id += 1
@@ -21,11 +20,16 @@ class Task(object):
 
     def run(self):
         try:
-            result = self.target.send(self.to_send)
+            if isinstance(self.to_send, Exception):
+                result = self.target.throw(self.to_send)
+            else:
+                result = self.target.send(self.to_send)
+            if self.parent:
+                self.parent.to_send = result
             if isinstance(result, calls.SystemCall):
                 # push it to scheduler
                 return result
-            if isinstance(result, types.GeneratorType):
+            elif isinstance(result, types.GeneratorType):
                 # act like trampoline
                 self._callstack.append(self.target)
                 self.to_send = None

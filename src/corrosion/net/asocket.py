@@ -2,33 +2,32 @@
 
 import socket
 
-from corrosion.tools import log
 from corrosion.core import calls
 
-_log = log.get_logger('sock')
 
 
 class Socket(object):
-    def __init__(self, sock):
-        self.sock = sock
+    def __init__(self, raw_socket):
+        self.sock = raw_socket
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.sock.setblocking(0)
 
     def accept(self):
         yield calls.WaitRead(self.sock)
         conn, addr = self.sock.accept()
+        self.sock.setblocking(0)
         yield (Socket(conn), addr)
 
     def send(self, buff):
         while buff:
             yield calls.WaitWrite(self.sock)
-            out_len = self.sock.send(buff)
+            try:
+                out_len = self.sock.send(buff)
+            except socket.error:
+                yield socket.error
             buff = buff[out_len:]
 
     def recv(self, max_bytes):
-        _log.debug('waiting for socket to read')
         yield calls.WaitRead(self.sock)
-        _log.debug('reading from socket')
         yield self.sock.recv(max_bytes)
 
     def __getattr__(self, name):
