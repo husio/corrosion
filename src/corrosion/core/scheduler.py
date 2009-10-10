@@ -49,9 +49,12 @@ class Scheduler(object):
         return False
 
     def _remove_task(self, task_id):
+        result = self._tasks[task_id].result
         del self._tasks[task_id]
         waiting_tasks = self._waiting_end.pop(task_id, [])
         for task in waiting_tasks:
+            # set all waiting task start values to last result of removed task
+            task.to_send = result
             self._schedule_task(task)
 
     def _io_poll(self, timeout=1, maxevents=-1):
@@ -110,9 +113,6 @@ class Scheduler(object):
                     except Exception as e:
                         # catch any other exception, and raise it in current task
                         _log.info('exception raised: %s', type(e).__name__)
-                        #if task.to_send is e:
-                        #    # infinite exception loop protection
-                        #    raise
                         task.to_send = e
                         # schedule task, so it could handle exception 
                         self._schedule_task(task)

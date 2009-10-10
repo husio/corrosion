@@ -9,13 +9,12 @@ from corrosion.core import calls
 class Task(object):
     __id = 0
     to_send = None
-    parent = None
+    result = None
 
     def __init__(self, target):
         Task._Task__id += 1
         self.id = Task._Task__id
         self.target = target
-        self.to_send = None
         self._callstack = []
 
     def run(self):
@@ -24,8 +23,7 @@ class Task(object):
                 result = self.target.throw(self.to_send)
             else:
                 result = self.target.send(self.to_send)
-            if self.parent:
-                self.parent.to_send = result
+            self.result = result
             if isinstance(result, calls.SystemCall):
                 # push it to scheduler
                 return result

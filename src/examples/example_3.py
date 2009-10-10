@@ -22,6 +22,7 @@ def worker():
         print 'waiting for micro task end'
         result = yield calls.WaitEnd(micro_id)
         print 'micro task is done with result:', result
+        # return to scheduler
         yield
     yield calls.StopScheduler()
 

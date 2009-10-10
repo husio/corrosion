@@ -54,23 +54,21 @@ class WaitEnd(Wait):
     """
     def __init__(self, task_id):
         super(WaitEnd, self).__init__()
-        self.task_id = task_id
+        self.wait_task_id = task_id
 
     def handle(self):
-        result = self.scheduler._schedule_task_wait_end(self.task, self.task_id)
+        wait_task = self.scheduler._tasks[self.wait_task_id]
+        result = self.scheduler._schedule_task_wait_end(self.task, wait_task.id)
         if not result:
             self.task.to_send = None
             self.scheduler._schedule_task(self.task)
-        else:
-            subtask = self.scheduler._tasks[self.task_id]
-            subtask.parent = self.task
 
 
 class Worker(Wait):
     """Create new task, schedule it, wait for the result and spawn base taks
     with the result of the first one.
     """
-    def __init__(self, task_gen, data):
+    def __init__(self, task_gen, data=None):
         # initialize generator
         task_gen.next()
         self.task_gen = task_gen
