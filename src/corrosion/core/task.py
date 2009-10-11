@@ -43,7 +43,13 @@ class Task(object):
                 raise
             self.to_send = None
             self.target = self._callstack.pop()
+        except Exception as e:
+            # use this exception as result and quit
+            self._callstack = []
+            self.result = e
+            return e
 
     def __repr__(self):
-        return '<%s #%d>' % (type(self).__name__, self.id)
+        return '<%s #%d (%s)>' % \
+                (type(self).__name__, self.id, self.target.__name__)
 

@@ -49,12 +49,13 @@ class Scheduler(object):
         return False
 
     def _remove_task(self, task_id):
-        result = self._tasks[task_id].result
+        assert task_id in self._tasks
+        task_result = self._tasks[task_id].result
         del self._tasks[task_id]
         waiting_tasks = self._waiting_end.pop(task_id, [])
         for task in waiting_tasks:
             # set all waiting task start values to last result of removed task
-            task.to_send = result
+            task.to_send = task_result
             self._schedule_task(task)
 
     def _io_poll(self, timeout=1, maxevents=-1):
@@ -69,11 +70,11 @@ class Scheduler(object):
             elif event & select.EPOLLERR:
                 _log.error('EPOLLERR: Error condition happened on %d', fd)
                 _log.error('EPOLLERR: %s', self._tasks[fd])
-                self._remove_task[fd]
+                self._remove_task(fd)
             elif event & select.EPOLLHUP:
                 _log.error('EPOLLHUP: Hang up happened on the assoc fd')
                 _log.error('EPOLLERR: %s', self._tasks[fd])
-                self._remove_task[fd]
+                self._remove_task(fd)
             else:
                 _log.error('unknown event: %d', event)
                 _log.error('unknown event: %s', self._tasks[fd])
@@ -111,17 +112,29 @@ class Scheduler(object):
                     try:
                         syscall.handle()
                     except Exception as e:
-                        # catch any other exception, and raise it in current task
+                        # catch any exception, and raise it in current task
                         _log.info('exception raised: %s', type(e).__name__)
                         task.to_send = e
                         # schedule task, so it could handle exception 
                         self._schedule_task(task)
+                elif isinstance(result, Exception):
+                    waiting_tasks = self._waiting_end.pop(task.id, [])
+                    if not waiting_tasks:
+                        # if no one is waiting to handle that exception, then
+                        # raise it - it's bug, not a feature
+                        raise result
+                    for waiting_task in waiting_tasks:
+                        # set all waiting task start values to last result of
+                        # removed task
+                        waiting_task.to_send = result
+                        self._schedule_task(waiting_task)
                 else:
                     self._schedule_task(task)
             except StopIteration:
                 self._remove_task(task.id)
                 if self._ready_queue.empty():
                     self.stop()
+
 
     def stop(self):
         self.__keep_running = False

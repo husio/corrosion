@@ -12,18 +12,26 @@ from corrosion.core.scheduler import Scheduler
 from corrosion.core import calls
 
 
+class SimpleError(Exception):
+    pass
+
+def micro_task(throw, msg_format):
+    self_id = yield calls.GetSelfId()
+    if throw:
+        raise SimpleError('new error: %d' % self_id)
+    yield msg_format % (self_id, time.time())
 
 def worker():
-    def mikro_task(msg_format):
-        yield msg_format % time.time()
-
-    for _ignore in range(3):
-        micro_id = yield calls.NewTask(mikro_task('current time: %d'))
+    for i in range(7):
+        throw = i % 2
+        mt = micro_task(throw, '(%d) current time: %d')
+        mt_id = yield calls.NewTask(mt)
         print 'waiting for micro task end'
-        result = yield calls.WaitEnd(micro_id)
+        try:
+            result = yield calls.WaitEnd(mt_id)
+        except SimpleError as e:
+            result = '%s: %s' % (type(e).__name__, ','.join(e.args))
         print 'micro task is done with result:', result
-        # return to scheduler
-        yield
     yield calls.StopScheduler()
 
 
